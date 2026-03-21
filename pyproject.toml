@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "vex"
 dynamic = ["version"]
 description = "Run commands in a virtualenv"
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 keywords = ["virtualenv", "virtualenvwrapper", "workon", "installation", "deployment"]
@@ -48,7 +48,7 @@ packages = ["vex"]
 include = [
     "/vex",
     "/LICENSE",
-    "/README.rst",
+    "/README.md",
 ]
 
 [project.optional-dependencies]
