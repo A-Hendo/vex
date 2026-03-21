@@ -1,23 +1,26 @@
-from pytest import raises
+"""Tests for the fakes used in testing."""
+
+import os
 from vex.tests import fakes
 
 
-class TestObject(object):
-    def test_simple(self):
-        obj = fakes.Object(foo="bar", baz=2)
-        assert obj.foo == "bar"
-        assert obj.baz == 2
-
-    def test_private(self):
-        obj = fakes.Object(foo="bar", _baz=2)
-        assert obj.foo == "bar"
-        with raises(AttributeError):
-            obj._baz
+def test_fake_environ() -> None:
+    with fakes.FakeEnviron(FOO="bar") as env:
+        assert env["FOO"] == "bar"
+        assert os.environ["FOO"] == "bar"
+    assert "FOO" not in os.environ
 
 
-def test_make_fake_exists():
-    """Test that make_fake_exists itself works as intended.
-    """
-    fake_exists = fakes.make_fake_exists(["/special"])
-    assert fake_exists("/special")
-    assert not fake_exists("/dev")
+def test_patched_module() -> None:
+    import os as os_mod
+    original_exists = os_mod.path.exists
+    with fakes.PatchedModule(os_mod.path, exists="fake"):
+        assert os_mod.path.exists == "fake"  # type: ignore
+    assert os_mod.path.exists == original_exists
+
+
+def test_make_fake_exists() -> None:
+    fake_exists = fakes.make_fake_exists(["/foo", "/bar"])
+    assert fake_exists("/foo")
+    assert fake_exists("/bar")
+    assert not fake_exists("/baz")
