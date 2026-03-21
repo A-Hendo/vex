@@ -1,89 +1,60 @@
-import sys
+"""Exceptions for vex."""
 
 
 class InvalidArgument(Exception):
-    """Raised by anything under main() to propagate errors to user.
-    """
-    def __init__(self, message):
+    """Base class for exceptions raised by anything under main()."""
+
+    def __init__(self, message: str):
         self.message = message
-        Exception.__init__(self, message)
+        super().__init__(message)
 
 
 class NoVirtualenvName(InvalidArgument):
-    """No virtualenv name was given (insufficient arguments).
-    """
-    pass
+    """No virtualenv name was given."""
 
 
 class NoVirtualenvsDirectory(InvalidArgument):
-    """There is no directory to find named virtualenvs in.
-    """
-    pass
+    """There is no directory to find named virtualenvs in."""
 
 
 class OtherShell(InvalidArgument):
-    """The given argument to --shell-config is not recognized.
-    """
-    pass
+    """The given argument to --shell-config is not recognized."""
 
 
 class UnknownArguments(InvalidArgument):
-    """Unknown arguments were given on the command line.
-
-    This is a byproduct of having to use parse_known_args.
-    """
-    pass
+    """Unknown arguments were given on the command line."""
 
 
 class InvalidVexrc(InvalidArgument):
-    """config file specified or required but absent or unparseable.
-    """
-    pass
+    """Config file specified or required but absent or unparseable."""
 
 
 class InvalidVirtualenv(InvalidArgument):
-    """No usable virtualenv was found.
-    """
-    pass
+    """No usable virtualenv was found."""
 
 
 class InvalidCommand(InvalidArgument):
-    """No runnable command was found.
-    """
-    pass
+    """No runnable command was found."""
 
 
 class InvalidCwd(InvalidArgument):
-    """cwd specified or required but unusable.
-    """
-    pass
+    """cwd specified or required but unusable."""
 
 
 class BadConfig(InvalidArgument):
-    """raised to halt on fatal conditions on the way to run.
-    """
-    pass
+    """Fatal conditions encountered on the way to run."""
 
 
 class VirtualenvAlreadyMade(InvalidArgument):
-    """could not make virtualenv as one already existed.
-    """
-    pass
+    """Virtualenv already exists."""
 
 
 class VirtualenvNotMade(InvalidArgument):
-    """could not make virtualenv.
-    """
-    pass
+    """Could not make virtualenv."""
 
 
 class VirtualenvNotRemoved(InvalidArgument):
-    """raised when virtualenv could not be removed.
-    """
-    pass
+    """Virtualenv could not be removed."""
 
 
-if sys.version_info > (3, 3):
-    CommandNotFoundError = FileNotFoundError
-else:
-    CommandNotFoundError = OSError
+CommandNotFoundError = FileNotFoundError

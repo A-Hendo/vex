@@ -1,15 +1,19 @@
 """Run subprocess.
 """
+
 import os
 import platform
+import shutil
 import subprocess
-import distutils.spawn
+from typing import Any
+
 from vex import exceptions
 
 
-def get_environ(environ, defaults, ve_path):
-    """Make an environment to run with.
-    """
+def get_environ(
+    environ: dict[str, str], defaults: dict[str, str], ve_path: str
+) -> dict[str, str]:
+    """Make an environment to run with."""
     # Copy the parent environment, add in defaults from .vexrc.
     env = environ.copy()
     env.update(defaults)
@@ -49,13 +53,12 @@ def get_environ(environ, defaults, ve_path):
             segments.remove(current_ve_bin)
         except ValueError:
             raise exceptions.BadConfig(
-                "something set VIRTUAL_ENV prior to this vex execution, "
-                "implying that a virtualenv is already activated "
-                "and PATH should contain the virtualenv's bin directory. "
-                "Unfortunately, it doesn't: it's {0!r}. "
-                "You might want to check that PATH is not "
-                "getting clobbered somewhere, e.g. in your shell's configs."
-                .format(system_path)
+                f"something set VIRTUAL_ENV prior to this vex execution, "
+                f"implying that a virtualenv is already activated "
+                f"and PATH should contain the virtualenv's bin directory. "
+                f"Unfortunately, it doesn't: it's {system_path!r}. "
+                f"You might want to check that PATH is not "
+                f"getting clobbered somewhere, e.g. in your shell's configs."
             )
 
     segments.insert(0, ve_bin)
@@ -64,19 +67,17 @@ def get_environ(environ, defaults, ve_path):
     return env
 
 
-def run(command, env, cwd):
-    """Run the given command.
-    """
+def run(command: list[str], env: dict[str, str], cwd: str | None) -> int | None:
+    """Run the given command."""
     assert command
     if cwd:
         assert os.path.exists(cwd)
     if platform.system() == "Windows":
-        exe = distutils.spawn.find_executable(command[0], path=env["PATH"])
+        exe = shutil.which(command[0], path=env["PATH"])
         if exe:
             command[0] = exe
     _, command_name = os.path.split(command[0])
-    if (command_name in ("bash", "zsh")
-    and "VIRTUALENVWRAPPER_PYTHON" not in env):
+    if command_name in ("bash", "zsh") and "VIRTUALENVWRAPPER_PYTHON" not in env:
         env["VIRTUALENVWRAPPER_PYTHON"] = ":"
     try:
         process = subprocess.Popen(command, env=env, cwd=cwd)
