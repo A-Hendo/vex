@@ -1,11 +1,9 @@
-"""Run subprocess.
-"""
+"""Run subprocess."""
 
 import os
 import platform
 import shutil
 import subprocess
-from typing import Any
 
 from vex import exceptions
 
@@ -15,7 +13,7 @@ def get_environ(
 ) -> dict[str, str]:
     """Make an environment to run with."""
     # Copy the parent environment, add in defaults from .vexrc.
-    env = environ.copy()
+    env: dict[str, str] = environ.copy()
     env.update(defaults)
 
     # Leaving in existing PYTHONHOME can cause some errors
@@ -27,6 +25,7 @@ def get_environ(
     # or there is nothing for us to do here and it's bad.
     if not ve_path:
         raise exceptions.BadConfig("ve_path must be set")
+    ve_bin: str = ""
     if platform.system() == "Windows":
         ve_bin = os.path.join(ve_path, "Scripts")
     else:
@@ -40,15 +39,15 @@ def get_environ(
     # This would not be necessary and things would be simpler if vex
     # did not have to interoperate with a ubiquitous existing tool.
     # virtualenv doesn't...
-    current_ve = env.get("VIRTUAL_ENV", "")
-    system_path = environ.get("PATH", "")
-    segments = system_path.split(os.pathsep)
+    current_ve: str = env.get("VIRTUAL_ENV", "")
+    system_path: str = environ.get("PATH", "")
+    segments: list[str] = system_path.split(os.pathsep)
     if current_ve:
         # Since activate doesn't export _OLD_VIRTUAL_PATH, we are going to
         # manually remove the virtualenv's bin.
         # A virtualenv's bin should not normally be on PATH except
         # via activate or similar, so I'm OK with this solution.
-        current_ve_bin = os.path.join(current_ve, "bin")
+        current_ve_bin: str = os.path.join(current_ve, "bin")
         try:
             segments.remove(current_ve_bin)
         except ValueError:
@@ -73,17 +72,17 @@ def run(command: list[str], env: dict[str, str], cwd: str | None) -> int | None:
     if cwd:
         assert os.path.exists(cwd)
     if platform.system() == "Windows":
-        exe = shutil.which(command[0], path=env["PATH"])
+        exe: str | None = shutil.which(command[0], path=env["PATH"])
         if exe:
             command[0] = exe
     _, command_name = os.path.split(command[0])
     if command_name in ("bash", "zsh") and "VIRTUALENVWRAPPER_PYTHON" not in env:
         env["VIRTUALENVWRAPPER_PYTHON"] = ":"
     try:
-        process = subprocess.Popen(command, env=env, cwd=cwd)
+        process: subprocess.Popen[bytes] = subprocess.Popen(command, env=env, cwd=cwd)
         process.wait()
-    except exceptions.CommandNotFoundError as error:
+    except OSError as error:
         if error.errno != 2:
             raise
         return None
-    return process.returncode
+    return int(process.returncode) if process.returncode is not None else None

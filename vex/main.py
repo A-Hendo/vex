@@ -1,5 +1,6 @@
 """Main command-line entry-point and any code tightly coupled to it."""
 
+from argparse import Namespace
 import os
 import shutil
 import sys
@@ -12,16 +13,17 @@ from vex.options import get_options
 from vex.remove import handle_remove
 from vex.run import get_environ, run
 from vex.shell_config import handle_shell_config
+from vex.config import Vexrc
 
 
-def get_vexrc(options: Any, environ: dict[str, str]) -> config.Vexrc:
+def get_vexrc(options: Any, environ: dict[str, str]) -> Vexrc:
     """Get a representation of the contents of the config file."""
     # Complain if user specified nonexistent file with --config.
     # But we don't want to complain just because ~/.vexrc doesn't exist.
     if options.config and not os.path.exists(options.config):
         raise exceptions.InvalidVexrc(f"nonexistent config: {options.config!r}")
-    filename = options.config or os.path.expanduser("~/.vexrc")
-    vexrc = config.Vexrc.from_file(filename, environ)
+    filename: Any | str = options.config or os.path.expanduser("~/.vexrc")
+    vexrc: Vexrc = Vexrc.from_file(filename, environ)
     return vexrc
 
 
@@ -31,19 +33,20 @@ def get_cwd(options: Any) -> str | None:
         return None
     if not os.path.exists(options.cwd):
         raise exceptions.InvalidCwd(f"can't --cwd to invalid path {options.cwd!r}")
-    return options.cwd
+    return str(options.cwd)
 
 
 def get_virtualenv_name(options: Any) -> str:
+    ve_name: str = ""
     if options.path:
-        return os.path.dirname(options.path)
+        return str(os.path.dirname(options.path))
     else:
         ve_name = options.rest.pop(0) if options.rest else ""
     if not ve_name:
         raise exceptions.NoVirtualenvName(
             "could not find a virtualenv name in the command line."
         )
-    return ve_name
+    return str(ve_name)
 
 
 def get_virtualenv_path(ve_base: str, ve_name: str) -> str:
@@ -57,7 +60,7 @@ def get_virtualenv_path(ve_base: str, ve_name: str) -> str:
 
     # Using this requires get_ve_base to pass through nonexistent dirs
     if not os.path.exists(ve_base):
-        message = (
+        message: str = (
             f"virtualenvs directory {ve_base!r} not found. "
             f"Create it or use vex --make to get started."
         )
@@ -71,10 +74,10 @@ def get_virtualenv_path(ve_base: str, ve_name: str) -> str:
     # So we check if they gave an absolute path as ve_name.
     # But we don't want this error if $PWD == $WORKON_HOME,
     # in which case "foo" is a valid relative path to virtualenv foo.
-    ve_path = os.path.join(ve_base, ve_name)
+    ve_path: str = os.path.join(ve_base, ve_name)
     if ve_path == ve_name and os.path.basename(ve_name) != ve_name:
         raise exceptions.InvalidVirtualenv(
-            f"To run in a virtualenv by its path, " f"use 'vex --path {ve_path}'"
+            f"To run in a virtualenv by its path, use 'vex --path {ve_path}'"
         )
 
     ve_path = os.path.abspath(ve_path)
@@ -83,9 +86,11 @@ def get_virtualenv_path(ve_base: str, ve_name: str) -> str:
     return ve_path
 
 
-def get_command(options: Any, vexrc: config.Vexrc, environ: dict[str, str]) -> list[str]:
+def get_command(
+    options: Any, vexrc: config.Vexrc, environ: dict[str, str]
+) -> list[str]:
     """Get a command to run."""
-    command = options.rest
+    command: list[str] | None = options.rest
     if not command:
         command = vexrc.get_shell(environ)
     if command and command[0].startswith("--"):
@@ -106,7 +111,7 @@ def handle_list(ve_base: str, prefix: str = "") -> int:
     if not os.path.isdir(ve_base):
         sys.stderr.write(f"no virtualenvs directory at {ve_base!r}\n")
         return 1
-    text = "\n".join(
+    text: str = "\n".join(
         sorted(
             relative_path
             for relative_path in os.listdir(ve_base)
@@ -121,7 +126,7 @@ def handle_list(ve_base: str, prefix: str = "") -> int:
 
 def _main(environ: dict[str, str], argv: list[str]) -> int:
     """Logic for main(), with less direct system interaction."""
-    options = get_options(argv)
+    options: Namespace = get_options(argv)
     if options.version:
         return handle_version()
     vexrc = get_vexrc(options, environ)
@@ -134,13 +139,15 @@ def _main(environ: dict[str, str], argv: list[str]) -> int:
     # Do as much as possible before a possible make, so errors can raise
     # without leaving behind an unused virtualenv.
     # get_virtualenv_name is destructive and must happen before get_command
-    cwd = get_cwd(options)
-    ve_base = vexrc.get_ve_base(environ)
-    ve_name = get_virtualenv_name(options)
-    command = get_command(options, vexrc, environ)
+    cwd: str | None = get_cwd(options)
+    ve_base: str = vexrc.get_ve_base(environ)
+    ve_name: str = get_virtualenv_name(options)
+    command: list[str] = get_command(options, vexrc, environ)
     # Either we create ve_path, get it from options.path or find it
     # in ve_base.
+    ve_path: str = ""
     if options.make:
+        make_path: str = ""
         if options.path:
             make_path = os.path.abspath(options.path)
         else:
@@ -154,8 +161,7 @@ def _main(environ: dict[str, str], argv: list[str]) -> int:
                 )
         elif not shutil.which(options.python):
             raise exceptions.InvalidVirtualenv(
-                f"the python specified by --python isn't executable: "
-                f"{options.python!r}"
+                f"the python specified by --python isn't executable: {options.python!r}"
             )
         handle_make(environ, options, make_path)
         ve_path = make_path
@@ -172,24 +178,24 @@ def _main(environ: dict[str, str], argv: list[str]) -> int:
 
     # get_environ has to wait until ve_path is defined, which might
     # be after a make; of course we can't run until we have env.
-    env = get_environ(environ, vexrc["env"] or {}, ve_path)
-    returncode = run(command, env=env, cwd=cwd)
+    env: dict[str, str] = get_environ(environ, vexrc["env"] or {}, ve_path)
+    returncode: int | None = run(command, env=env, cwd=cwd)
     if options.remove:
         handle_remove(ve_path)
     if returncode is None:
         raise exceptions.InvalidCommand(f"command not found: {command[0]!r}")
-    return returncode
+    return int(returncode)
 
 
 def main() -> None:
     """The main command-line entry point, with system interactions."""
-    argv = sys.argv[1:]
-    returncode = 1
+    argv: list[str] = sys.argv[1:]
+    exit_code: int = 1
     try:
-        returncode = _main(dict(os.environ), argv)
+        exit_code = _main(dict(os.environ), argv)
     except exceptions.InvalidArgument as error:
         if error.message:
             sys.stderr.write(f"Error: {error.message}\n")
         else:
             raise
-    sys.exit(returncode)
+    sys.exit(exit_code)

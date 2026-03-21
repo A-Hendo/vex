@@ -1,19 +1,18 @@
 """Command-line option parsing for vex."""
 
 import argparse
-from typing import List
-
+from argparse import ArgumentParser, Namespace, RawTextHelpFormatter, _ArgumentGroup
 from vex import exceptions
 
 
-def make_arg_parser() -> argparse.ArgumentParser:
+def make_arg_parser() -> ArgumentParser:
     """Return a standard ArgumentParser object."""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter,
+    parser: ArgumentParser = ArgumentParser(
+        formatter_class=RawTextHelpFormatter,
         usage="vex [OPTIONS] VIRTUALENV_NAME COMMAND_TO_RUN ...",
     )
 
-    make = parser.add_argument_group(title="To make a new virtualenv")
+    make: _ArgumentGroup = parser.add_argument_group(title="To make a new virtualenv")
     make.add_argument(
         "-m",
         "--make",
@@ -46,7 +45,10 @@ def make_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--path", metavar="DIR", help="absolute path to virtualenv to use", action="store"
+        "--path",
+        metavar="DIR",
+        help="absolute path to virtualenv to use",
+        action="store",
     )
     parser.add_argument(
         "--cwd",
@@ -89,9 +91,9 @@ def make_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def get_options(argv: List[str]) -> argparse.Namespace:
+def get_options(argv: list[str]) -> Namespace:
     """Called to parse the given list as command-line arguments."""
-    arg_parser = make_arg_parser()
+    arg_parser: ArgumentParser = make_arg_parser()
     options, unknown = arg_parser.parse_known_args(argv)
     if unknown:
         arg_parser.print_help()
