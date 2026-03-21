@@ -51,7 +51,7 @@ include = [
     "/README.md",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "mypy",
