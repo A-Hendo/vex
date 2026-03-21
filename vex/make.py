@@ -1,9 +1,12 @@
-import os
-import sys
-import distutils.spawn
-from vex.run import run
-from vex import exceptions
+"""Virtualenv creation logic."""
 
+import os
+import shutil
+import sys
+from typing import Any
+
+from vex import exceptions
+from vex.run import run
 
 PYDOC_SCRIPT = """#!/usr/bin/env python
 from pydoc import cli
@@ -16,48 +19,64 @@ PYDOC_BATCH = """
 """.encode("ascii")
 
 
-def handle_make(environ, options, make_path):
+def handle_make(environ: dict[str, str], options: Any, make_path: str) -> None:
+    """Create a virtualenv at the given path."""
     if os.path.exists(make_path):
         # Can't ignore existing virtualenv happily because existing one
         # might have different parameters and --make implies nonexistent
         raise exceptions.VirtualenvAlreadyMade(
-            "virtualenv already exists: {0!r}".format(make_path)
+            f"virtualenv already exists: {make_path!r}"
         )
+
     ve_base = os.path.dirname(make_path)
     if not os.path.exists(ve_base):
-        os.mkdir(ve_base)
+        os.makedirs(ve_base, exist_ok=True)
     elif not os.path.isdir(ve_base):
         raise exceptions.VirtualenvNotMade(
-            "could not make virtualenv: "
-            "{0!r} already exists but is not a directory. "
-            "Choose a different virtualenvs path using ~/.vexrc "
-            "or $WORKON_HOME, or remove the existing file; "
-            "then rerun your vex --make command.".format(ve_base)
+            f"could not make virtualenv: "
+            f"{ve_base!r} already exists but is not a directory. "
+            f"Choose a different virtualenvs path using ~/.vexrc "
+            f"or $WORKON_HOME, or remove the existing file; "
+            f"then rerun your vex --make command."
         )
-    # TODO: virtualenv is usually not on PATH for Windows,
-    # but finding it is a terrible issue.
-    if os.name == "nt" and not os.environ.get("VIRTUAL_ENV", ""):
-        ve = os.path.join(
-            os.path.dirname(sys.executable),
-            "Scripts",
-            "virtualenv"
-        )
+
+    # Strategy for creation:
+    # 1. If uv is available, use 'uv venv' (it's fastest)
+    # 2. Otherwise use 'virtualenv'
+    # TODO: add an option to force 'venv' stdlib
+
+    uv_path = shutil.which("uv")
+    if uv_path:
+        args = [uv_path, "venv", make_path]
+        if options.python:
+            args += ["--python", options.python]
+        if options.site_packages:
+            args += ["--system-site-packages"]
+        # uv doesn't have an exact 'always-copy' equivalent in 'venv' command
+        # but it uses symlinks/hardlinks/clones by default.
     else:
-        ve = "virtualenv"
-    args = [ve, make_path]
-    if options.python:
-        if os.name == "nt":
-            python = distutils.spawn.find_executable(options.python)
-            if python:
-                options.python = python
-        args += ["--python", options.python]
-    if options.site_packages:
-        args += ["--system-site-packages"]
-    if options.always_copy:
-        args+= ["--always-copy"]
+        # Fallback to virtualenv
+        if os.name == "nt" and not os.environ.get("VIRTUAL_ENV", ""):
+            ve = os.path.join(os.path.dirname(sys.executable), "Scripts", "virtualenv")
+        else:
+            ve = "virtualenv"
+        args = [ve, make_path]
+        if options.python:
+            if os.name == "nt":
+                python = shutil.which(options.python)
+                if python:
+                    options.python = python
+            args += ["--python", options.python]
+        if options.site_packages:
+            args += ["--system-site-packages"]
+        if options.always_copy:
+            args += ["--always-copy"]
+
     returncode = run(args, env=environ, cwd=ve_base)
     if returncode != 0:
         raise exceptions.VirtualenvNotMade("error creating virtualenv")
+
+    # Install pydoc shim
     if os.name != "nt":
         pydoc_path = os.path.join(make_path, "bin", "pydoc")
         if os.path.exists(os.path.dirname(pydoc_path)):

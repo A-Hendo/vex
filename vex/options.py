@@ -1,10 +1,13 @@
+"""Command-line option parsing for vex."""
+
 import argparse
+from typing import List
+
 from vex import exceptions
 
 
-def make_arg_parser():
-    """Return a standard ArgumentParser object.
-    """
+def make_arg_parser() -> argparse.ArgumentParser:
+    """Return a standard ArgumentParser object."""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         usage="vex [OPTIONS] VIRTUALENV_NAME COMMAND_TO_RUN ...",
@@ -12,9 +15,10 @@ def make_arg_parser():
 
     make = parser.add_argument_group(title="To make a new virtualenv")
     make.add_argument(
-        "-m", "--make",
+        "-m",
+        "--make",
         action="store_true",
-        help="make named virtualenv before running command"
+        help="make named virtualenv before running command",
     )
     make.add_argument(
         "--python",
@@ -35,16 +39,14 @@ def make_arg_parser():
 
     remove = parser.add_argument_group(title="To remove a virtualenv")
     remove.add_argument(
-        "-r", "--remove",
+        "-r",
+        "--remove",
         action="store_true",
-        help="remove the named virtualenv after running command"
+        help="remove the named virtualenv after running command",
     )
 
     parser.add_argument(
-        "--path",
-        metavar="DIR",
-        help="absolute path to virtualenv to use",
-        action="store"
+        "--path", metavar="DIR", help="absolute path to virtualenv to use", action="store"
     )
     parser.add_argument(
         "--cwd",
@@ -58,7 +60,7 @@ def make_arg_parser():
         metavar="FILE",
         default=None,
         action="store",
-        help="path to config file to read (default: '~/.vexrc')"
+        help="path to config file to read (default: '~/.vexrc')",
     )
     parser.add_argument(
         "--shell-config",
@@ -66,7 +68,7 @@ def make_arg_parser():
         dest="shell_to_configure",
         action="store",
         default=None,
-        help="print optional config for the specified shell"
+        help="print optional config for the specified shell",
     )
     parser.add_argument(
         "--list",
@@ -75,33 +77,25 @@ def make_arg_parser():
         const="",
         default=None,
         help="print a list of available virtualenvs [matching PREFIX]",
-        action="store"
+        action="store",
     )
     parser.add_argument(
         "--version",
         help="print the version of vex that is being run",
-        action="store_true"
+        action="store_true",
     )
-    parser.add_argument(
-        "rest",
-        nargs=argparse.REMAINDER,
-        help=argparse.SUPPRESS)
+    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
     return parser
 
 
-
-def get_options(argv):
-    """Called to parse the given list as command-line arguments.
-
-    :returns:
-        an options object as returned by argparse.
-    """
+def get_options(argv: List[str]) -> argparse.Namespace:
+    """Called to parse the given list as command-line arguments."""
     arg_parser = make_arg_parser()
     options, unknown = arg_parser.parse_known_args(argv)
     if unknown:
         arg_parser.print_help()
-        raise exceptions.UnknownArguments(
-            "unknown args: {0!r}".format(unknown))
+        raise exceptions.UnknownArguments(f"unknown args: {unknown!r}")
+    # Inject help printer for later use
     options.print_help = arg_parser.print_help
     return options
