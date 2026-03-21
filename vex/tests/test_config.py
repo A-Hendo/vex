@@ -84,9 +84,15 @@ class TestVexrc:
         with patch("builtins.open", create=True) as mock_open:
             mock_open.return_value.__enter__.return_value = BytesIO(TYPICAL_VEXRC)
             vexrc = config.Vexrc.from_file("stuff", {})
-            assert list(vexrc["root"].items()) == [("shell", "bash")]
-            assert list(vexrc["env"].items()) == [("ANSWER", "42")]
-            assert list(vexrc["arbitrary"].items()) == [("x", "y")]
+            root = vexrc["root"]
+            env = vexrc["env"]
+            arbitrary = vexrc["arbitrary"]
+            assert root is not None
+            assert env is not None
+            assert arbitrary is not None
+            assert list(root.items()) == [("shell", "bash")]
+            assert list(env.items()) == [("ANSWER", "42")]
+            assert list(arbitrary.items()) == [("x", "y")]
 
     def test_read_expand(self) -> None:
         environ = {"SHELL": "smash"}
