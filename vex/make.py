@@ -8,13 +8,13 @@ from typing import Any
 from vex import exceptions
 from vex.run import run
 
-PYDOC_SCRIPT = """#!/usr/bin/env python
+PYDOC_SCRIPT: bytes = """#!/usr/bin/env python
 from pydoc import cli
 cli()
 """.encode("ascii")
 
 
-PYDOC_BATCH = """
+PYDOC_BATCH: bytes = """
 @python -m pydoc %*
 """.encode("ascii")
 
@@ -28,7 +28,7 @@ def handle_make(environ: dict[str, str], options: Any, make_path: str) -> None:
             f"virtualenv already exists: {make_path!r}"
         )
 
-    ve_base = os.path.dirname(make_path)
+    ve_base: str = os.path.dirname(make_path)
     if not os.path.exists(ve_base):
         os.makedirs(ve_base, exist_ok=True)
     elif not os.path.isdir(ve_base):
@@ -45,7 +45,8 @@ def handle_make(environ: dict[str, str], options: Any, make_path: str) -> None:
     # 2. Otherwise use 'virtualenv'
     # TODO: add an option to force 'venv' stdlib
 
-    uv_path = shutil.which("uv")
+    uv_path: str | None = shutil.which("uv")
+    args: list[str] = []
     if uv_path:
         args = [uv_path, "venv", make_path]
         if options.python:
@@ -56,14 +57,17 @@ def handle_make(environ: dict[str, str], options: Any, make_path: str) -> None:
         # but it uses symlinks/hardlinks/clones by default.
     else:
         # Fallback to virtualenv
+        ve: str = ""
         if os.name == "nt" and not os.environ.get("VIRTUAL_ENV", ""):
-            ve = os.path.join(os.path.dirname(sys.executable), "Scripts", "virtualenv")
+            ve = os.path.join(
+                os.path.dirname(sys.executable), "Scripts", "virtualenv"
+            )
         else:
             ve = "virtualenv"
         args = [ve, make_path]
         if options.python:
             if os.name == "nt":
-                python = shutil.which(options.python)
+                python: str | None = shutil.which(options.python)
                 if python:
                     options.python = python
             args += ["--python", options.python]
@@ -72,17 +76,18 @@ def handle_make(environ: dict[str, str], options: Any, make_path: str) -> None:
         if options.always_copy:
             args += ["--always-copy"]
 
-    returncode = run(args, env=environ, cwd=ve_base)
+    returncode: int | None = run(args, env=environ, cwd=ve_base)
     if returncode != 0:
         raise exceptions.VirtualenvNotMade("error creating virtualenv")
 
     # Install pydoc shim
+    pydoc_path: str = ""
     if os.name != "nt":
         pydoc_path = os.path.join(make_path, "bin", "pydoc")
         if os.path.exists(os.path.dirname(pydoc_path)):
             with open(pydoc_path, "wb") as out:
                 out.write(PYDOC_SCRIPT)
-            perms = os.stat(pydoc_path).st_mode
+            perms: int = os.stat(pydoc_path).st_mode
             os.chmod(pydoc_path, perms | 0o0111)
     else:
         pydoc_path = os.path.join(make_path, "Scripts", "pydoc.bat")
