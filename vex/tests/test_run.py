@@ -1,16 +1,17 @@
-from __future__ import unicode_literals
+"""Tests for vex.run module."""
+
 import os
-import os.path
-import subprocess
 import platform
-from mock import patch
-from pytest import raises
-from vex import run
-from vex import exceptions
-from . fakes import FakeEnviron, PatchedModule, FakePopen
+import subprocess
+from unittest.mock import patch
+
+import pytest
+
+from vex import exceptions, run
+from vex.tests.fakes import FakeEnviron, FakePopen, PatchedModule
 
 
-def test_get_environ():
+def test_get_environ() -> None:
     path = "thing"
     defaults = {"from_defaults": "b"}
     original = {
@@ -20,8 +21,7 @@ def test_get_environ():
         "VIRTUAL_ENV": "bad_old_ve",
     }
     passed_environ = original.copy()
-    with FakeEnviron() as os_environ, \
-         PatchedModule(os.path, exists=lambda path: True):
+    with FakeEnviron() as os_environ, PatchedModule(os.path, exists=lambda path: True):
         result = run.get_environ(passed_environ, defaults, path)
         # os.environ should not be changed in any way.
         assert len(os_environ) == 0
@@ -34,18 +34,19 @@ def test_get_environ():
     # except with no PYTHONHOME
     assert "PYTHONHOME" not in result
     # and PATH is prepended to. but without bad old ve's bin.
-    assert result["PATH"] == os.path.pathsep.join(
-        ["thing/bin", "crap", "junk"]
-    )
+    # Note: run.py uses os.path.join(ve_path, "bin") which will use / or \
+    expected_bin = os.path.join("thing", "bin")
+    assert result["PATH"] == os.path.pathsep.join([expected_bin, "crap", "junk"])
     assert result["VIRTUAL_ENV"] == path
 
 
-def test_run():
+def test_run() -> None:
     # mock subprocess.Popen because we are cowards
-    with PatchedModule(os.path, exists=lambda path: True), \
-       PatchedModule(subprocess, Popen=FakePopen(returncode=888)) as mod:
+    with PatchedModule(os.path, exists=lambda path: True), PatchedModule(
+        subprocess, Popen=FakePopen(returncode=888)
+    ) as mod:
         assert not mod.Popen.waited
-        command = "foo"
+        command = ["foo"]
         env = {"this": "irrelevant"}
         cwd = "also_irrelevant"
         returncode = run.run(command, env=env, cwd=cwd)
@@ -56,31 +57,32 @@ def test_run():
         assert returncode == 888
 
 
-def test_run_bad_command():
+def test_run_bad_command() -> None:
     env = os.environ.copy()
-    returncode = run.run("blah_unlikely", env=env,  cwd=".")
+    # On most systems this won't be found
+    returncode = run.run(["blah_unlikely_command_12345"], env=env, cwd=".")
     assert returncode is None
 
 
-class TestGetEnviron(object):
-    def test_ve_path_None(self):
-        with raises(exceptions.BadConfig):
-            run.get_environ({}, {}, None)
+class TestGetEnviron:
+    def test_ve_path_None(self) -> None:
+        with pytest.raises(exceptions.BadConfig):
+            run.get_environ({}, {}, None)  # type: ignore
 
-    def test_ve_path_empty_string(self):
-        with raises(exceptions.BadConfig):
+    def test_ve_path_empty_string(self) -> None:
+        with pytest.raises(exceptions.BadConfig):
             run.get_environ({}, {}, "")
 
-    def test_copies_original(self):
+    def test_copies_original(self) -> None:
         original = {"foo": "bar"}
-        defaults = {}
+        defaults: dict[str, str] = {}
         ve_path = "blah"
         with patch("os.path.exists", return_value=True):
             environ = run.get_environ(original, defaults, ve_path)
         assert environ is not original
         assert environ.get("foo") == "bar"
 
-    def test_updates_with_defaults(self):
+    def test_updates_with_defaults(self) -> None:
         original = {"foo": "bar", "yak": "nope"}
         defaults = {"bam": "pow", "yak": "fur"}
         ve_path = "blah"
@@ -89,51 +91,52 @@ class TestGetEnviron(object):
         assert environ.get("bam") == "pow"
         assert environ.get("yak") == "fur"
 
-    def test_ve_path(self):
-        original = {"foo": "bar"}
-        defaults = {}
+    def test_ve_path(self) -> None:
+        original: dict[str, str] = {"foo": "bar"}
+        defaults: dict[str, str] = {}
         ve_path = "blah"
-        with patch("os.path.exists"):
+        with patch("os.path.exists", return_value=True):
             environ = run.get_environ(original, defaults, ve_path)
         assert environ.get("VIRTUAL_ENV") == ve_path
 
-    def test_prefixes_PATH(self):
-        original = {"foo": "bar"}
-        defaults = {}
+    def test_prefixes_PATH(self) -> None:
+        original: dict[str, str] = {"foo": "bar"}
+        defaults: dict[str, str] = {}
         ve_path = "fnood"
         bin_path = os.path.join(ve_path, "bin")
         with patch("os.path.exists", return_value=True):
             environ = run.get_environ(original, defaults, ve_path)
-        PATH = environ.get("PATH", "")
-        paths = PATH.split(os.pathsep)
+        path_env = environ.get("PATH", "")
+        paths = path_env.split(os.pathsep)
         assert paths[0] == bin_path
 
-    def test_removes_old_virtualenv_bin_path(self):
+    def test_removes_old_virtualenv_bin_path(self) -> None:
         new = "new"
         old = "old"
-        original = {"foo": "bar", "VIRTUALENV": old}
-        defaults = {}
+        original = {"foo": "bar", "VIRTUAL_ENV": old, "PATH": f"{old}/bin:other"}
+        defaults: dict[str, str] = {}
         new_bin = os.path.join(new, "bin")
         old_bin = os.path.join(old, "bin")
         with patch("os.path.exists", return_value=True):
             environ = run.get_environ(original, defaults, new)
-        PATH = environ.get("PATH", "")
-        paths = PATH.split(os.pathsep)
+        path_env = environ.get("PATH", "")
+        paths = path_env.split(os.pathsep)
         assert paths[0] == new_bin
         assert old_bin not in paths
 
-    def test_fake_windows_env(self):
+    def test_fake_windows_env(self) -> None:
         # does not simulate different os.pathsep, etc.
         # just tests using Script instead of bin, for coverage.
-        original = {"foo": "bar"}
-        defaults = {}
+        original: dict[str, str] = {"foo": "bar"}
+        defaults: dict[str, str] = {}
         ve_path = "fnard"
         bin_path = os.path.join(ve_path, "Scripts")
-        with patch("platform.system", return_value="Windows"), \
-             patch("os.path.exists", return_value=True):
+        with patch("platform.system", return_value="Windows"), patch(
+            "os.path.exists", return_value=True
+        ):
             assert platform.system() == "Windows"
             environ = run.get_environ(original, defaults, ve_path)
         assert environ.get("VIRTUAL_ENV") == ve_path
-        PATH = environ.get("PATH", "")
-        paths = PATH.split(os.pathsep)
+        path_env = environ.get("PATH", "")
+        paths = path_env.split(os.pathsep)
         assert paths[0] == bin_path

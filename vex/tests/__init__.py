@@ -1,7 +1,8 @@
-path_type = bytes
+"""Tests package for vex."""
 
-try:
-    unicode
-    str_type = unicode
-except NameError:
-    str_type = str
+import sys
+
+# In modern Python, we use str for paths mostly,
+# but some parts of vex might still expect bytes for shell config etc.
+path_type = str
+str_type = str
