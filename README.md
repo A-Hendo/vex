@@ -113,8 +113,12 @@ Vex provides completion for virtualenv names. To enable it, add the following to
 Vex development is now managed with `uv`.
 
 ```bash
-git clone https://github.com/sashahart/vex
+git clone https://github.com/a-hendo/vex
 cd vex
 uv sync
 uv run pytest
 ```
+
+## Credits
+
+Vex was originally created by [Sasha Hart](https://github.com/sashahart). This version is a modernized fork of the [original project](https://github.com/sashahart/vex).
