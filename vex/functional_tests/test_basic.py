@@ -167,6 +167,9 @@ def test_find_with_HOME() -> None:
 
 
 class TestWithVirtualenv:
+    parent: TempDir
+    venv: TempVenv
+
     @classmethod
     def setup_class(cls) -> None:
         cls.parent = TempDir()
