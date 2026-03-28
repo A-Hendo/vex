@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vex"
+name = "vexx"
 dynamic = ["version"]
 description = "Run commands in a virtualenv"
 readme = "README.md"

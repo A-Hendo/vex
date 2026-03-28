@@ -36,13 +36,13 @@ Vex takes a simpler approach: it calculates the environment required for the vir
 The recommended way to install Vex is using [uv](https://github.com/astral-sh/uv):
 
 ```bash
-uv tool install vex
+uv tool install vexx
 ```
 
 Alternatively, you can use pip:
 
 ```bash
-pip install --user vex
+pip install --user vexx
 ```
 
 ### Usage with UV

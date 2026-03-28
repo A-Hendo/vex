@@ -299,7 +299,7 @@ wheels = [
 ]
 
 [[package]]
-name = "vex"
+name = "vexx"
 source = { editable = "." }
 dependencies = [
     { name = "virtualenv" },
